@@ -4,13 +4,13 @@ import com.google.inject.Provides;
 import com.jamescornwell.seachartnavigator.model.ChartingTask;
 import com.jamescornwell.seachartnavigator.service.ChartingTaskRepository;
 import com.jamescornwell.seachartnavigator.service.NavigationState;
+import com.jamescornwell.seachartnavigator.service.SailingState;
 import com.jamescornwell.seachartnavigator.service.TargetSelector;
 import com.jamescornwell.seachartnavigator.ui.SeaChartNavigationOverlay;
 import com.jamescornwell.seachartnavigator.ui.TargetMapPoint;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
@@ -138,25 +138,22 @@ public class SeaChartNavigatorPlugin extends Plugin
 			return;
 		}
 
-		Player player = client.getLocalPlayer();
-		if (player == null || player.getWorldLocation() == null)
+		WorldPoint playerLocation = SailingState.getTopLevelWorldPoint(client);
+		if (playerLocation == null)
 		{
 			clearNavigation();
 			return;
 		}
 
-		WorldPoint playerLocation = player.getWorldLocation();
 		int sailingLevel = config.useBoostedSailingLevel()
 			? client.getBoostedSkillLevel(Skill.SAILING)
 			: client.getRealSkillLevel(Skill.SAILING);
 
 		ChartingTask previousTarget = navigationState.getTarget();
-		ChartingTask selectedTarget = targetSelector.selectWithHysteresis(
+		ChartingTask selectedTarget = targetSelector.selectClosest(
 			taskRepository.getTasks(),
 			playerLocation,
-			task -> task.hasSailingLevel(sailingLevel) && (config.includeCompleted() || !task.isComplete(client)),
-			previousTarget,
-			config.switchHysteresis()
+			task -> task.hasSailingLevel(sailingLevel) && (config.includeCompleted() || !task.isComplete(client))
 		);
 
 		boolean targetChanged = previousTarget != selectedTarget;
@@ -167,7 +164,7 @@ public class SeaChartNavigatorPlugin extends Plugin
 		}
 
 		int distance = targetSelector.distance(playerLocation, selectedTarget.getLocation());
-		navigationState.setTarget(selectedTarget, playerLocation, distance);
+		navigationState.setTarget(selectedTarget);
 		updateDecorations(selectedTarget, targetChanged || forceDecorationRefresh);
 
 		if (targetChanged)

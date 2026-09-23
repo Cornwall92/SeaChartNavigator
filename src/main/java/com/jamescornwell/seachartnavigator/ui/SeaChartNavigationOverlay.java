@@ -1,8 +1,11 @@
 package com.jamescornwell.seachartnavigator.ui;
 
 import com.jamescornwell.seachartnavigator.SeaChartNavigatorConfig;
+import com.jamescornwell.seachartnavigator.HudVisibility;
 import com.jamescornwell.seachartnavigator.model.ChartingTask;
+import com.jamescornwell.seachartnavigator.service.NavigationMath;
 import com.jamescornwell.seachartnavigator.service.NavigationState;
+import com.jamescornwell.seachartnavigator.service.SailingState;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
@@ -11,24 +14,27 @@ import java.awt.Polygon;
 import java.awt.RenderingHints;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import net.runelite.api.Client;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
-/** Always-visible directional overlay for the currently selected sea charting task. */
+/** Live directional overlay for the currently selected sea charting task. */
 @Singleton
 public class SeaChartNavigationOverlay extends Overlay
 {
 	private static final int ARROW_SIZE = 28;
 	private static final int PADDING = 7;
 
+	private final Client client;
 	private final SeaChartNavigatorConfig config;
 	private final NavigationState navigationState;
 
 	@Inject
-	public SeaChartNavigationOverlay(SeaChartNavigatorConfig config, NavigationState navigationState)
+	public SeaChartNavigationOverlay(Client client, SeaChartNavigatorConfig config, NavigationState navigationState)
 	{
+		this.client = client;
 		this.config = config;
 		this.navigationState = navigationState;
 		setPosition(OverlayPosition.TOP_LEFT);
@@ -39,13 +45,13 @@ public class SeaChartNavigationOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.navigatorEnabled())
+		if (!config.navigatorEnabled() || !shouldRenderHud())
 		{
 			return null;
 		}
 
 		ChartingTask target = navigationState.getTarget();
-		WorldPoint playerLocation = navigationState.getPlayerLocation();
+		WorldPoint playerLocation = SailingState.getTopLevelWorldPoint(client);
 		if (target == null || playerLocation == null)
 		{
 			return null;
@@ -54,8 +60,8 @@ public class SeaChartNavigationOverlay extends Overlay
 		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		FontMetrics metrics = graphics.getFontMetrics();
 		String title = target.getTitle();
-		String activity = target.getType().getDisplayName() + " \u00b7 Sailing " + target.getRequiredSailingLevel();
-		String distance = navigationState.getDistance() + " tiles away";
+		String activity = "Type: " + target.getType().getDisplayName() + " \u00b7 Sailing " + target.getRequiredSailingLevel();
+		String distance = NavigationMath.tileDistance(playerLocation, target.getLocation()) + " tiles away";
 
 		int textWidth = Math.max(metrics.stringWidth(title), Math.max(metrics.stringWidth(activity), metrics.stringWidth(distance)));
 		int height = Math.max(ARROW_SIZE + (PADDING * 2), (metrics.getHeight() * 3) + (PADDING * 2));
@@ -76,11 +82,16 @@ public class SeaChartNavigationOverlay extends Overlay
 		return new Dimension(width, height);
 	}
 
+	private boolean shouldRenderHud()
+	{
+		HudVisibility visibility = config.hudVisibility();
+		return visibility == HudVisibility.ALWAYS ||
+			(visibility == HudVisibility.WHEN_SAILING && SailingState.isSailing(client));
+	}
+
 	private void drawDirectionArrow(Graphics2D graphics, WorldPoint from, WorldPoint to, int height)
 	{
-		double deltaX = to.getX() - from.getX();
-		double deltaY = to.getY() - from.getY();
-		double angle = Math.atan2(deltaX, deltaY);
+		double angle = NavigationMath.cameraRelativeAngle(from, to, client.getCameraYaw());
 
 		Graphics2D arrowGraphics = (Graphics2D) graphics.create();
 		try
@@ -102,4 +113,3 @@ public class SeaChartNavigationOverlay extends Overlay
 		}
 	}
 }
-

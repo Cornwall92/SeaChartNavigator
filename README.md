@@ -9,11 +9,16 @@ charting task they can do at their current Sailing level.
   level setting.
 - Ignores completed tasks by default, using the game's completion state rather
   than a separate checklist.
-- Chooses the nearest eligible task by direct tile distance from the player.
-- Displays a rotating on-screen arrow, task type, required Sailing level and
-  distance.
+- Chooses the nearest eligible task by direct tile distance from the boat's
+  real world-map position.
+- Displays a live, camera-relative on-screen arrow, task type, required
+  Sailing level and distance.
+- Shows the HUD only while aboard a Sailing boat by default; it can instead be
+  set to always show or be hidden. This does not affect the map pin or native
+  hint arrow.
 - Adds a marker to the world map.
-- Can use the native RuneScape hint arrow if explicitly enabled.
+- Uses the native RuneScape hint arrow by default, with a setting to turn it
+  off if another activity needs the hint arrow.
 - Can notify when a new target is selected or when the player reaches it.
 
 The project contains the current 358-task location and completion-varbit data.
@@ -68,7 +73,10 @@ keep `runelite-plugin.properties` at the repository root.
 - Leave **Completed tasks** off.
 - Leave **Use boosted Sailing level** off unless you intentionally want to use
   boosts.
-- Keep the native hint arrow off unless no other content/plugin needs it.
+- Leave **HUD visibility** on **Only while sailing** for the normal
+  boat-only experience. Choose **Always show** only if you want to inspect a
+  target from land.
+- Turn the native hint arrow off when another activity or plugin needs it.
 - Use target-change notifications sparingly; the on-screen arrow is normally
   enough.
 

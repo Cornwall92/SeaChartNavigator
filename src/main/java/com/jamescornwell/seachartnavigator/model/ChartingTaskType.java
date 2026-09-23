@@ -3,12 +3,12 @@ package com.jamescornwell.seachartnavigator.model;
 /** The activity used to complete a sea charting task. */
 public enum ChartingTaskType
 {
-	GENERIC("Charting"),
+	GENERIC("Generic"),
 	SPYGLASS("Spyglass"),
 	CURRENT_DUCK("Current duck"),
-	DRINK_CRATE("Drink crate"),
-	MERMAID_GUIDE("Mermaid guide"),
-	WEATHER("Weather station");
+	DRINK_CRATE("Crate"),
+	MERMAID_GUIDE("Diving"),
+	WEATHER("Weather");
 
 	private final String displayName;
 
@@ -22,4 +22,3 @@ public enum ChartingTaskType
 		return displayName;
 	}
 }
-

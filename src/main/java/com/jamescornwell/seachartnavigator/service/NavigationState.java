@@ -2,28 +2,20 @@ package com.jamescornwell.seachartnavigator.service;
 
 import javax.inject.Singleton;
 import com.jamescornwell.seachartnavigator.model.ChartingTask;
-import net.runelite.api.coords.WorldPoint;
-
-/** Current navigation target and the last calculated distance to it. */
+/** Current navigation target. Position and distance are read live by the HUD. */
 @Singleton
 public class NavigationState
 {
 	private ChartingTask target;
-	private WorldPoint playerLocation;
-	private int distance;
 
-	public void setTarget(ChartingTask target, WorldPoint playerLocation, int distance)
+	public void setTarget(ChartingTask target)
 	{
 		this.target = target;
-		this.playerLocation = playerLocation;
-		this.distance = distance;
 	}
 
 	public void clear()
 	{
 		target = null;
-		playerLocation = null;
-		distance = 0;
 	}
 
 	public ChartingTask getTarget()
@@ -31,14 +23,4 @@ public class NavigationState
 		return target;
 	}
 
-	public WorldPoint getPlayerLocation()
-	{
-		return playerLocation;
-	}
-
-	public int getDistance()
-	{
-		return distance;
-	}
 }
-

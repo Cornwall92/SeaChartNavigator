@@ -23,6 +23,16 @@ public interface SeaChartNavigatorConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "hudVisibility",
+		name = "HUD visibility",
+		description = "Choose when to show the on-screen navigation HUD. Map pins and the RuneScape hint arrow are controlled separately."
+	)
+	default HudVisibility hudVisibility()
+	{
+		return HudVisibility.WHEN_SAILING;
+	}
+
+	@ConfigItem(
 		keyName = "includeCompleted",
 		name = "Include completed tasks",
 		description = "Allow already-charted tasks to be selected as the target."
@@ -59,7 +69,7 @@ public interface SeaChartNavigatorConfig extends Config
 	)
 	default boolean useNativeHintArrow()
 	{
-		return false;
+		return true;
 	}
 
 	@Range(min = 1, max = 64)
@@ -71,17 +81,6 @@ public interface SeaChartNavigatorConfig extends Config
 	default int arrivalRadius()
 	{
 		return 8;
-	}
-
-	@Range(min = 0, max = 64)
-	@ConfigItem(
-		keyName = "switchHysteresis",
-		name = "Target switch tolerance",
-		description = "Keep the current target until another target is this many tiles closer."
-	)
-	default int switchHysteresis()
-	{
-		return 12;
 	}
 
 	@ConfigItem(
@@ -124,4 +123,3 @@ public interface SeaChartNavigatorConfig extends Config
 		return new Color(0, 0, 0, 190);
 	}
 }
-
