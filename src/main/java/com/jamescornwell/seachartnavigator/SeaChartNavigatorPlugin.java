@@ -18,6 +18,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.Notifier;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.eventbus.Subscribe;
@@ -35,6 +36,9 @@ public class SeaChartNavigatorPlugin extends Plugin
 {
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private SeaChartNavigatorConfig config;
@@ -74,7 +78,9 @@ public class SeaChartNavigatorPlugin extends Plugin
 	protected void startUp()
 	{
 		overlayManager.add(navigationOverlay);
-		recalculateTarget(false, true);
+		// RuneLite may call startUp from its Swing settings thread. Reading the
+		// world view is only permitted from the game client thread.
+		clientThread.invokeLater(() -> recalculateTarget(false, true));
 	}
 
 	@Override
