@@ -22,7 +22,7 @@ public class NavigationMathTest
 	{
 		assertEquals(
 			0.0,
-			NavigationMath.cameraRelativeAngle(new WorldPoint(100, 100, 0), new WorldPoint(101, 100, 0), 1536),
+			NavigationMath.cameraRelativeAngle(new WorldPoint(100, 100, 0), new WorldPoint(101, 100, 0), 12288),
 			0.0001
 		);
 	}
@@ -32,7 +32,17 @@ public class NavigationMathTest
 	{
 		assertEquals(
 			Math.PI / 2.0,
-			NavigationMath.cameraRelativeAngle(new WorldPoint(100, 100, 0), new WorldPoint(100, 101, 0), 512),
+			NavigationMath.cameraRelativeAngle(new WorldPoint(100, 100, 0), new WorldPoint(100, 101, 0), 4096),
+			0.0001
+		);
+	}
+
+	@Test
+	public void yawUsesTheFullFourteenBitAngleRange()
+	{
+		assertEquals(
+			0.0,
+			NavigationMath.cameraRelativeAngle(new WorldPoint(100, 100, 0), new WorldPoint(100, 101, 0), 16384),
 			0.0001
 		);
 	}

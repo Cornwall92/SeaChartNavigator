@@ -6,7 +6,8 @@ import net.runelite.api.coords.WorldPoint;
 public final class NavigationMath
 {
 	private static final double FULL_CIRCLE_RADIANS = Math.PI * 2.0;
-	private static final int CAMERA_YAW_UNITS = 2048;
+	/** RuneLite exposes camera yaw in 14-bit Jagex angle units (0-16,383). */
+	private static final int CAMERA_YAW_UNITS = 1 << 14;
 
 	private NavigationMath()
 	{
