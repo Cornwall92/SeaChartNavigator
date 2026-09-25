@@ -15,6 +15,7 @@ import java.awt.RenderingHints;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -45,14 +46,18 @@ public class SeaChartNavigationOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.navigatorEnabled() || !shouldRenderHud())
+		if (client.getGameState() != GameState.LOGGED_IN || !config.navigatorEnabled() || !shouldRenderHud())
 		{
 			return null;
 		}
 
 		ChartingTask target = navigationState.getTarget();
+		if (target == null)
+		{
+			return null;
+		}
 		WorldPoint playerLocation = SailingState.getTopLevelWorldPoint(client);
-		if (target == null || playerLocation == null)
+		if (playerLocation == null)
 		{
 			return null;
 		}

@@ -18,7 +18,8 @@ charting task they can do at their current Sailing level.
   hint arrow.
 - Adds a marker to the world map.
 - Uses the native RuneScape hint arrow by default, with a setting to turn it
-  off if another activity needs the hint arrow.
+  off. It yields while another activity or plugin has a different hint arrow,
+  then resumes when that arrow is cleared.
 - Can notify when a new target is selected or when the player reaches it.
 
 The project contains the current 358-task location and completion-varbit data.
@@ -61,8 +62,9 @@ Alternatively, from PowerShell in the project folder run:
 .\gradlew.bat run
 ```
 
-The development client keeps its own settings and should be used only for
-testing. Close it normally when you are done.
+The development client uses your normal RuneLite settings unless you select a
+separate configuration profile. Use a separate profile for testing, and close
+the development client normally when you are done.
 
 The resulting plugin JAR is written to `build/libs`. To distribute it through
 RuneLite, publish the repository and submit it to the RuneLite Plugin Hub;
@@ -76,7 +78,9 @@ keep `runelite-plugin.properties` at the repository root.
 - Leave **HUD visibility** on **Only while sailing** for the normal
   boat-only experience. Choose **Always show** only if you want to inspect a
   target from land.
-- Turn the native hint arrow off when another activity or plugin needs it.
+- Turn the native hint arrow off if you do not want it. Other content's hint
+  arrows take priority while present. RuneLite does not expose arrow ownership;
+  two coordinate arrows at exactly the same tile cannot be distinguished.
 - Use target-change notifications sparingly; the on-screen arrow is normally
   enough.
 
