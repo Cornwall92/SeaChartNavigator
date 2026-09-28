@@ -20,7 +20,8 @@ public final class SailingState
 	public static boolean isSailing(Client client)
 	{
 		Player player = client.getLocalPlayer();
-		return player != null && player.getWorldView() != null && !player.getWorldView().isTopLevel();
+		WorldView worldView = player == null ? null : player.getWorldView();
+		return worldView != null && !worldView.isTopLevel();
 	}
 
 	/**
@@ -29,16 +30,21 @@ public final class SailingState
 	public static WorldPoint getTopLevelWorldPoint(Client client)
 	{
 		Player player = client.getLocalPlayer();
-		if (player == null || player.getWorldView() == null || player.getLocalLocation() == null)
+		if (player == null)
 		{
 			return null;
 		}
 
 		WorldView worldView = player.getWorldView();
 		LocalPoint localPoint = player.getLocalLocation();
+		WorldView topLevelWorldView = client.getTopLevelWorldView();
+		if (worldView == null || localPoint == null || topLevelWorldView == null)
+		{
+			return null;
+		}
 		if (!worldView.isTopLevel())
 		{
-			WorldEntity boat = client.getTopLevelWorldView()
+			WorldEntity boat = topLevelWorldView
 				.worldEntities()
 				.byIndex(worldView.getId());
 			if (boat == null)
@@ -48,6 +54,10 @@ public final class SailingState
 			localPoint = boat.transformToMainWorld(localPoint);
 		}
 
-		return WorldPoint.fromLocal(client, localPoint);
+		if (localPoint == null)
+		{
+			return null;
+		}
+		return WorldPoint.fromLocal(topLevelWorldView, localPoint.getX(), localPoint.getY(), topLevelWorldView.getPlane());
 	}
 }

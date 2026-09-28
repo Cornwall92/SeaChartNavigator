@@ -11,6 +11,7 @@ import com.jamescornwell.seachartnavigator.ui.TargetMapPoint;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.HintArrowType;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
@@ -65,8 +66,14 @@ public class SeaChartNavigatorPlugin extends Plugin
 	private Notifier notifier;
 
 	private TargetMapPoint mapPoint;
-	private boolean nativeHintArrowSet;
+	private WorldPoint nativeHintArrowLocation;
+	// Keep notification identity separate from the visible target, which must
+	// be hidden while the scene or the player's world view is unavailable.
+	private ChartingTask lastSelectedTarget;
 	private boolean arrivalNotificationSent;
+	// A new identity on every enable prevents callbacks from an old session
+	// from changing navigation after disable or a quick disable/re-enable.
+	private volatile Object activeSession;
 
 	@Provides
 	SeaChartNavigatorConfig provideConfig(ConfigManager configManager)
@@ -77,23 +84,39 @@ public class SeaChartNavigatorPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		Object session = new Object();
+		activeSession = session;
 		overlayManager.add(navigationOverlay);
 		// RuneLite may call startUp from its Swing settings thread. Reading the
 		// world view is only permitted from the game client thread.
-		clientThread.invokeLater(() -> recalculateTarget(false, true));
+		clientThread.invokeLater(() ->
+		{
+			if (activeSession == session)
+			{
+				clearNavigation();
+				recalculateTarget(false, true);
+			}
+		});
 	}
 
 	@Override
 	protected void shutDown()
 	{
+		activeSession = null;
 		overlayManager.remove(navigationOverlay);
-		clearNavigation();
+		clientThread.invoke(() ->
+		{
+			if (activeSession == null)
+			{
+				clearNavigation();
+			}
+		});
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		recalculateTarget(true, false);
+		runOnClientThread(() -> recalculateTarget(true, false));
 	}
 
 	@Subscribe
@@ -101,7 +124,7 @@ public class SeaChartNavigatorPlugin extends Plugin
 	{
 		if (event.getSkill() == Skill.SAILING)
 		{
-			recalculateTarget(true, false);
+			runOnClientThread(() -> recalculateTarget(true, false));
 		}
 	}
 
@@ -110,21 +133,24 @@ public class SeaChartNavigatorPlugin extends Plugin
 	{
 		if (taskRepository.isCompletionVarbit(event.getVarbitId()))
 		{
-			recalculateTarget(true, false);
+			runOnClientThread(() -> recalculateTarget(true, false));
 		}
 	}
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
-		if (event.getGameState() == GameState.LOGGED_IN)
+		runOnClientThread(() ->
 		{
-			recalculateTarget(false, true);
-		}
-		else if (event.getGameState() == GameState.LOGIN_SCREEN || event.getGameState() == GameState.HOPPING)
-		{
-			clearNavigation();
-		}
+			if (event.getGameState() == GameState.LOGGED_IN)
+			{
+				recalculateTarget(false, true);
+			}
+			else
+			{
+				clearNavigation(!isTemporaryGameState(event.getGameState()));
+			}
+		});
 	}
 
 	@Subscribe
@@ -132,22 +158,44 @@ public class SeaChartNavigatorPlugin extends Plugin
 	{
 		if (SeaChartNavigatorConfig.GROUP.equals(event.getGroup()))
 		{
-			recalculateTarget(false, true);
+			runOnClientThread(() -> recalculateTarget(false, true));
 		}
+	}
+
+	private void runOnClientThread(Runnable action)
+	{
+		Object session = activeSession;
+		if (session == null)
+		{
+			return;
+		}
+		clientThread.invoke(() ->
+		{
+			if (activeSession == session)
+			{
+				action.run();
+			}
+		});
 	}
 
 	private void recalculateTarget(boolean notifyOnChange, boolean forceDecorationRefresh)
 	{
-		if (!config.navigatorEnabled() || client.getGameState() != GameState.LOGGED_IN)
+		if (!config.navigatorEnabled())
 		{
 			clearNavigation();
+			return;
+		}
+		GameState gameState = client.getGameState();
+		if (gameState != GameState.LOGGED_IN)
+		{
+			clearNavigation(!isTemporaryGameState(gameState));
 			return;
 		}
 
 		WorldPoint playerLocation = SailingState.getTopLevelWorldPoint(client);
 		if (playerLocation == null)
 		{
-			clearNavigation();
+			clearNavigation(false);
 			return;
 		}
 
@@ -155,7 +203,7 @@ public class SeaChartNavigatorPlugin extends Plugin
 			? client.getBoostedSkillLevel(Skill.SAILING)
 			: client.getRealSkillLevel(Skill.SAILING);
 
-		ChartingTask previousTarget = navigationState.getTarget();
+		ChartingTask previousTarget = lastSelectedTarget;
 		ChartingTask selectedTarget = targetSelector.selectClosest(
 			taskRepository.getTasks(),
 			playerLocation,
@@ -171,6 +219,7 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 		int distance = targetSelector.distance(playerLocation, selectedTarget.getLocation());
 		navigationState.setTarget(selectedTarget);
+		lastSelectedTarget = selectedTarget;
 		updateDecorations(selectedTarget, targetChanged || forceDecorationRefresh);
 
 		if (targetChanged)
@@ -210,10 +259,18 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 		if (config.useNativeHintArrow())
 		{
-			if (forceRefresh || !nativeHintArrowSet)
+			// RuneScape has one shared hint arrow. Yield if game content or
+			// another plugin has replaced ours, and resume once it is free.
+			if (client.getHintArrowType() != HintArrowType.NONE && !isOurNativeHintArrow())
+			{
+				nativeHintArrowLocation = null;
+				return;
+			}
+			if (!target.getLocation().equals(nativeHintArrowLocation)
+				|| client.getHintArrowType() == HintArrowType.NONE)
 			{
 				client.setHintArrow(target.getLocation());
-				nativeHintArrowSet = true;
+				nativeHintArrowLocation = target.getLocation();
 			}
 		}
 		else
@@ -224,10 +281,24 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 	private void clearNavigation()
 	{
+		clearNavigation(true);
+	}
+
+	private void clearNavigation(boolean resetNotifications)
+	{
 		navigationState.clear();
-		arrivalNotificationSent = false;
+		if (resetNotifications)
+		{
+			lastSelectedTarget = null;
+			arrivalNotificationSent = false;
+		}
 		removeMapPoint();
 		clearNativeHintArrow();
+	}
+
+	private static boolean isTemporaryGameState(GameState gameState)
+	{
+		return gameState == GameState.LOADING || gameState == GameState.CONNECTION_LOST;
 	}
 
 	private void removeMapPoint()
@@ -241,10 +312,22 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 	private void clearNativeHintArrow()
 	{
-		if (nativeHintArrowSet)
+		if (isOurNativeHintArrow())
 		{
 			client.clearHintArrow();
-			nativeHintArrowSet = false;
 		}
+		nativeHintArrowLocation = null;
+	}
+
+	private boolean isOurNativeHintArrow()
+	{
+		if (nativeHintArrowLocation == null || client.getHintArrowType() != HintArrowType.COORDINATE)
+		{
+			return false;
+		}
+		WorldPoint current = client.getHintArrowPoint();
+		// Coordinate hint arrows store x/y, not a target plane.
+		return current != null && current.getX() == nativeHintArrowLocation.getX()
+			&& current.getY() == nativeHintArrowLocation.getY();
 	}
 }

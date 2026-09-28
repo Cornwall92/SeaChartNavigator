@@ -15,6 +15,7 @@ import java.awt.RenderingHints;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -45,14 +46,18 @@ public class SeaChartNavigationOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.navigatorEnabled() || !shouldRenderHud())
+		if (client.getGameState() != GameState.LOGGED_IN || !config.navigatorEnabled() || !shouldRenderHud())
 		{
 			return null;
 		}
 
 		ChartingTask target = navigationState.getTarget();
+		if (target == null)
+		{
+			return null;
+		}
 		WorldPoint playerLocation = SailingState.getTopLevelWorldPoint(client);
-		if (target == null || playerLocation == null)
+		if (playerLocation == null)
 		{
 			return null;
 		}
@@ -61,7 +66,8 @@ public class SeaChartNavigationOverlay extends Overlay
 		FontMetrics metrics = graphics.getFontMetrics();
 		String title = target.getTitle();
 		String activity = "Type: " + target.getType().getDisplayName() + " \u00b7 Sailing " + target.getRequiredSailingLevel();
-		String distance = NavigationMath.tileDistance(playerLocation, target.getLocation()) + " tiles away";
+		int tileDistance = NavigationMath.tileDistance(playerLocation, target.getLocation());
+		String distance = tileDistance == 0 ? "At location" : tileDistance + (tileDistance == 1 ? " tile away" : " tiles away");
 
 		int textWidth = Math.max(metrics.stringWidth(title), Math.max(metrics.stringWidth(activity), metrics.stringWidth(distance)));
 		int height = Math.max(ARROW_SIZE + (PADDING * 2), (metrics.getHeight() * 3) + (PADDING * 2));
@@ -69,7 +75,16 @@ public class SeaChartNavigationOverlay extends Overlay
 
 		graphics.setColor(config.backgroundColor());
 		graphics.fillRoundRect(0, 0, width, height, 8, 8);
-		drawDirectionArrow(graphics, playerLocation, target.getLocation(), height);
+		if (tileDistance == 0)
+		{
+			// There is no bearing when both positions are the same tile. A
+			// neutral marker avoids inventing a direction as the camera turns.
+			drawArrivalMarker(graphics, height);
+		}
+		else
+		{
+			drawDirectionArrow(graphics, playerLocation, target.getLocation(), height);
+		}
 
 		int textX = ARROW_SIZE + (PADDING * 2);
 		int textY = PADDING + metrics.getAscent();
@@ -87,6 +102,15 @@ public class SeaChartNavigationOverlay extends Overlay
 		HudVisibility visibility = config.hudVisibility();
 		return visibility == HudVisibility.ALWAYS ||
 			(visibility == HudVisibility.WHEN_SAILING && SailingState.isSailing(client));
+	}
+
+	private void drawArrivalMarker(Graphics2D graphics, int height)
+	{
+		int centerX = PADDING + ARROW_SIZE / 2;
+		int centerY = height / 2;
+		graphics.setColor(config.arrowColor());
+		graphics.drawOval(centerX - 9, centerY - 9, 18, 18);
+		graphics.fillOval(centerX - 3, centerY - 3, 6, 6);
 	}
 
 	private void drawDirectionArrow(Graphics2D graphics, WorldPoint from, WorldPoint to, int height)
