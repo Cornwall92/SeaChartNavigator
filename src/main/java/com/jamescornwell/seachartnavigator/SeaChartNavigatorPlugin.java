@@ -67,6 +67,9 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 	private TargetMapPoint mapPoint;
 	private WorldPoint nativeHintArrowLocation;
+	// Keep notification identity separate from the visible target, which must
+	// be hidden while the scene or the player's world view is unavailable.
+	private ChartingTask lastSelectedTarget;
 	private boolean arrivalNotificationSent;
 	// A new identity on every enable prevents callbacks from an old session
 	// from changing navigation after disable or a quick disable/re-enable.
@@ -145,7 +148,7 @@ public class SeaChartNavigatorPlugin extends Plugin
 			}
 			else
 			{
-				clearNavigation();
+				clearNavigation(!isTemporaryGameState(event.getGameState()));
 			}
 		});
 	}
@@ -177,16 +180,22 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 	private void recalculateTarget(boolean notifyOnChange, boolean forceDecorationRefresh)
 	{
-		if (!config.navigatorEnabled() || client.getGameState() != GameState.LOGGED_IN)
+		if (!config.navigatorEnabled())
 		{
 			clearNavigation();
+			return;
+		}
+		GameState gameState = client.getGameState();
+		if (gameState != GameState.LOGGED_IN)
+		{
+			clearNavigation(!isTemporaryGameState(gameState));
 			return;
 		}
 
 		WorldPoint playerLocation = SailingState.getTopLevelWorldPoint(client);
 		if (playerLocation == null)
 		{
-			clearNavigation();
+			clearNavigation(false);
 			return;
 		}
 
@@ -194,7 +203,7 @@ public class SeaChartNavigatorPlugin extends Plugin
 			? client.getBoostedSkillLevel(Skill.SAILING)
 			: client.getRealSkillLevel(Skill.SAILING);
 
-		ChartingTask previousTarget = navigationState.getTarget();
+		ChartingTask previousTarget = lastSelectedTarget;
 		ChartingTask selectedTarget = targetSelector.selectClosest(
 			taskRepository.getTasks(),
 			playerLocation,
@@ -210,6 +219,7 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 		int distance = targetSelector.distance(playerLocation, selectedTarget.getLocation());
 		navigationState.setTarget(selectedTarget);
+		lastSelectedTarget = selectedTarget;
 		updateDecorations(selectedTarget, targetChanged || forceDecorationRefresh);
 
 		if (targetChanged)
@@ -271,10 +281,24 @@ public class SeaChartNavigatorPlugin extends Plugin
 
 	private void clearNavigation()
 	{
+		clearNavigation(true);
+	}
+
+	private void clearNavigation(boolean resetNotifications)
+	{
 		navigationState.clear();
-		arrivalNotificationSent = false;
+		if (resetNotifications)
+		{
+			lastSelectedTarget = null;
+			arrivalNotificationSent = false;
+		}
 		removeMapPoint();
 		clearNativeHintArrow();
+	}
+
+	private static boolean isTemporaryGameState(GameState gameState)
+	{
+		return gameState == GameState.LOADING || gameState == GameState.CONNECTION_LOST;
 	}
 
 	private void removeMapPoint()

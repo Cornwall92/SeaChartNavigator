@@ -245,6 +245,106 @@ public class SeaChartNavigatorLifecycleTest
 	}
 
 	@Test
+	public void temporaryLoadingDoesNotRepeatArrivalNotifications()
+	{
+		when(config.arrivalNotifications()).thenReturn(Notification.ON);
+		enable();
+		for (GameState state : new GameState[]{GameState.LOADING, GameState.CONNECTION_LOST})
+		{
+			changeGameState(state);
+			assertNull(navigationState.getTarget());
+			// Settings can still be changed while the client is loading.
+			plugin.onConfigChanged(configChanged());
+			drainCallbacks();
+			changeGameState(GameState.LOGGED_IN);
+			assertSame(target, navigationState.getTarget());
+			tick();
+		}
+		verify(notifier, times(1)).notify(eq(Notification.ON), contains("You have reached"));
+	}
+
+	@Test
+	public void temporarilyMissingWorldViewDoesNotRepeatNotifications()
+	{
+		when(config.targetNotifications()).thenReturn(Notification.ON);
+		when(config.arrivalNotifications()).thenReturn(Notification.ON);
+		enable();
+		doReturn(null).when(player).getWorldView();
+		tick();
+		assertNull(navigationState.getTarget());
+		assertEquals(HintArrowType.NONE, hintType);
+		doAnswer(invocation ->
+		{
+			requireClientThread();
+			return worldView;
+		}).when(player).getWorldView();
+		tick();
+		assertSame(target, navigationState.getTarget());
+		verify(notifier).notify(Notification.ON, "Sea Chart Navigator: You have reached Test task");
+		verifyNoMoreInteractions(notifier);
+	}
+
+	@Test
+	public void aNewTargetAfterLoadingCanSendItsOwnArrivalNotification()
+	{
+		when(config.arrivalNotifications()).thenReturn(Notification.ON);
+		enable();
+		changeGameState(GameState.LOADING);
+		ChartingTask nextTarget = new ChartingTask(2, "Next task", ChartingTaskType.GENERIC,
+			18575, new WorldPoint(106, 100, 0), 1);
+		when(taskRepository.getTasks()).thenReturn(Collections.singletonList(nextTarget));
+		changeGameState(GameState.LOGGED_IN);
+		assertSame(nextTarget, navigationState.getTarget());
+		// A genuinely different target rearms arrival, including when the
+		// player later returns to a previously selected task.
+		when(taskRepository.getTasks()).thenReturn(Collections.singletonList(target));
+		tick();
+		assertSame(target, navigationState.getTarget());
+		verify(notifier, times(2)).notify(Notification.ON, "Sea Chart Navigator: You have reached Test task");
+		verify(notifier).notify(Notification.ON, "Sea Chart Navigator: You have reached Next task");
+	}
+
+	@Test
+	public void logoutAndWorldHopResetArrivalNotifications()
+	{
+		when(config.arrivalNotifications()).thenReturn(Notification.ON);
+		enable();
+		for (GameState state : new GameState[]{GameState.LOGIN_SCREEN, GameState.HOPPING})
+		{
+			changeGameState(state);
+			changeGameState(GameState.LOGGED_IN);
+		}
+		verify(notifier, times(3)).notify(eq(Notification.ON), contains("You have reached"));
+	}
+
+	@Test
+	public void disablingNavigatorDuringLoadingResetsArrivalNotifications()
+	{
+		when(config.arrivalNotifications()).thenReturn(Notification.ON);
+		enable();
+		changeGameState(GameState.LOADING);
+		when(config.navigatorEnabled()).thenReturn(false);
+		plugin.onConfigChanged(configChanged());
+		drainCallbacks();
+		when(config.navigatorEnabled()).thenReturn(true);
+		plugin.onConfigChanged(configChanged());
+		drainCallbacks();
+		changeGameState(GameState.LOGGED_IN);
+		verify(notifier, times(2)).notify(eq(Notification.ON), contains("You have reached"));
+	}
+
+	@Test
+	public void disablingPluginResetsArrivalNotifications()
+	{
+		when(config.arrivalNotifications()).thenReturn(Notification.ON);
+		enable();
+		plugin.shutDown();
+		drainCallbacks();
+		enable();
+		verify(notifier, times(2)).notify(eq(Notification.ON), contains("You have reached"));
+	}
+
+	@Test
 	public void disablingNavigatorSettingRemovesNavigation()
 	{
 		enable();
