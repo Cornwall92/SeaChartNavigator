@@ -1,109 +1,128 @@
 # Sea Chart Navigator
 
-A RuneLite Plugin Hub project that guides the player to the nearest sea
-charting task they can do at their current Sailing level.
+**Author: Corndwell**
 
-## What it does
+Sea Chart Navigator helps you find your next sea charting task in Old School
+RuneScape. It automatically selects the nearest task that meets your Sailing
+level, then shows its direction, activity type and distance. Completed tasks
+are excluded by default.
 
-- Uses the character's real Sailing level by default, with an optional boosted
-  level setting.
-- Ignores completed tasks by default, using the game's completion state rather
-  than a separate checklist.
-- Chooses the nearest eligible task by direct tile distance from the boat's
-  real world-map position.
-- Displays a live, camera-relative on-screen arrow, task type, required
-  Sailing level and distance. On the target tile it displays an arrival marker
-  and **At location**, rather than an arbitrary direction.
-- Shows the HUD only while aboard a Sailing boat by default; it can instead be
-  set to always show or be hidden. This does not affect the map pin or native
-  hint arrow.
-- Adds a marker to the world map.
-- Uses the native RuneScape hint arrow by default, with a setting to turn it
-  off. It yields while another activity or plugin has a different hint arrow,
-  then resumes when that arrow is cleared.
-- Can notify when a new target is selected or when the player reaches it.
-  Brief loading or connection-loss transitions do not repeat the arrival alert
-  for the same target.
+## Contents
 
-The project contains the current 358-task location and completion-varbit data.
-It performs guidance only: it does not click, move the character, or automate
-gameplay.
+- [Install and get started](#install-and-get-started)
+- [Follow a charting target](#follow-a-charting-target)
+- [How targets are selected](#how-targets-are-selected)
+- [Settings reference](#settings-reference)
+- [Troubleshooting](#troubleshooting)
+- [Help and credits](#help-and-credits)
 
-## Deliberate first-release limits
+## Install and get started
 
-- **Closest** means straight-line tile distance, not the fastest navigable
-  sailing route.
-- Eligibility is filtered by Sailing level and completion status. The overlay
-  labels the activity type, but it does not yet verify quest, inventory or boat
-  requirements.
-- The arrow is directional guidance, not a collision-aware route planner.
+1. Open RuneLite's **Plugin Hub** and search for **Sea Chart Navigator**.
+2. Install the plugin and enable it in your plugin list.
+3. Open its settings and leave **Enable navigator** switched on.
+4. Board your Sailing boat. The navigation overlay appears when an eligible
+   charting task is available.
+5. Follow the direction shown, check the activity type, and complete the task
+   in the game. The navigator selects another eligible task automatically.
 
-## Build
+The defaults are suitable for finding unfinished tasks at your normal Sailing
+level. To inspect a target while on land, change **HUD visibility** to
+**Always show**.
 
-Install a Java 17 JDK first. The project compiles its source for Java 11, but
-the included Gradle wrapper requires a current JDK to run.
+## Follow a charting target
 
-Open the folder as a Gradle project in IntelliJ, or run the following from a
-terminal:
+The movable on-screen overlay starts in the top-left corner and contains:
 
-```powershell
-.\gradlew.bat test
-.\gradlew.bat build
-```
+| Display | Meaning |
+| --- | --- |
+| Task title | The charting task currently selected. |
+| Direction arrow | The direction to the target relative to your camera. Rotating the camera changes the arrow's direction on screen. |
+| Type | The activity associated with the task: Generic, Spyglass, Current duck, Crate, Diving or Weather. |
+| Sailing level | The level required by the selected task. |
+| Distance | Direct tile distance from your current world-map position to the target. While aboard a boat, this uses the boat's world-map position. |
+| **At location** | You are on the target tile. A circular arrival marker replaces the direction arrow. This does not mean the task is complete. |
 
-On macOS/Linux, use `./gradlew test` and `./gradlew build`.
+Open the world map to see the selected task's pin. Hover over it to see the
+task title. The plugin can also show RuneScape's native hint arrow; both the
+map pin and native arrow have separate settings.
 
-## Release checks
+The navigator provides directions only. You steer the boat and perform the
+charting activity yourself. A direction may cross land or other obstacles,
+so choose a navigable route using the game world and map.
 
-Automated tests cover task selection and data integrity, camera rotation,
-boat coordinates, lifecycle/threading, hint-arrow sharing and notifications.
-Compilation and automated tests do not replace testing in a logged-in client.
-Before publishing, check these in a development client:
+### Optional notifications
 
-- Enable, change settings, disable and re-enable while logged in.
-- Sail, rotate the camera, reset the compass and move between nearest targets.
-- Reach a target and check the arrival marker; load a new scene or reconnect
-  near the same target and check that the arrival notification is not repeated.
-- Complete a task, change Sailing-level eligibility, hop worlds and log out.
-- Check that another activity's hint arrow is preserved.
+Enable **New target notification** to receive an alert when the selected task
+changes. Enable **Arrival notification** to receive an alert when you reach
+the configured **Arrival radius**. Both are off by default.
 
-## Test in RuneLite
+The arrival alert is sent at most once for a selected target until the target
+changes or navigation is reset. Brief loading or connection-loss transitions
+do not repeat it for the same target. The default radius is eight tiles, so an
+arrival alert can occur before the overlay says **At location**.
 
-With the project open in IntelliJ, click the **Gradle reload** button, then
-open **Tasks > application > run** and double-click **run**. This starts a
-separate development RuneLite client with Sea Chart Navigator already loaded.
+## How targets are selected
 
-Alternatively, from PowerShell in the project folder run:
+- The nearest eligible task is selected automatically as you move. There is
+  no manual target selection or target lock.
+- Eligibility uses your normal Sailing level unless **Use boosted Sailing
+  level** is enabled.
+- Completion is read from the game's task progress. Leave **Include completed
+  tasks** off to focus on unfinished charting.
+- Distance is measured directly in tiles, allowing diagonal distance. It is
+  not sailing route length or estimated travel time.
+- Quest progress, carried items, boat equipment and other activity
+  requirements are not checked. Meeting the displayed Sailing level alone
+  does not guarantee you can complete the task immediately.
 
-```powershell
-.\gradlew.bat run
-```
+The plugin includes 358 charting tasks. If no task meets the level and
+completion filters, no navigation target is displayed.
 
-The development client uses your normal RuneLite settings unless you select a
-separate configuration profile. Use a separate profile for testing, and close
-the development client normally when you are done.
+## Settings reference
 
-The resulting plugin JAR is written to `build/libs`. To distribute it through
-RuneLite, publish the repository and submit it to the RuneLite Plugin Hub;
-keep `runelite-plugin.properties` at the repository root.
+Open **Sea Chart Navigator** in RuneLite's plugin settings to change these
+options.
 
-## Recommended in-game settings
+| Setting | Default | What it does |
+| --- | --- | --- |
+| **Enable navigator** | On | Enables target selection, the overlay, map pin, native hint arrow and notifications according to their individual settings. Turning it off clears the current navigation. |
+| **HUD visibility** | Only while sailing | **Only while sailing** shows the overlay aboard a Sailing boat. **Always show** also shows it on land. **Hide HUD** hides the overlay. This setting does not hide the map pin or native hint arrow. |
+| **Include completed tasks** | Off | Allows already-completed charting tasks to be selected. |
+| **Use boosted Sailing level** | Off | Uses your current boosted Sailing level instead of your normal level. The target can change as your level changes. |
+| **Show world-map pin** | On | Marks the selected target on the world map. |
+| **Use native hint arrow** | On | Shows RuneScape's hint arrow when it is available. Another activity or plugin's different hint arrow takes priority. |
+| **Arrival radius** | 8 tiles | Distance at which the arrival notification can trigger. Choose 1–64 tiles. It does not change the overlay's **At location** marker. |
+| **New target notification** | Off | Sends a notification when the selected task changes during navigation. |
+| **Arrival notification** | Off | Sends a notification when you enter the selected task's arrival radius. |
+| **Arrow colour** | Mint green | Changes the overlay's direction arrow and arrival marker colour. |
+| **Overlay background** | Translucent black | Changes the overlay background colour and transparency. |
 
-- Leave **Completed tasks** off.
-- Leave **Use boosted Sailing level** off unless you intentionally want to use
-  boosts.
-- Leave **HUD visibility** on **Only while sailing** for the normal
-  boat-only experience. Choose **Always show** only if you want to inspect a
-  target from land.
-- Turn the native hint arrow off if you do not want it. Other content's hint
-  arrows take priority while present. RuneLite does not expose arrow ownership;
-  two coordinate arrows at exactly the same tile cannot be distinguished.
-- Use target-change notifications sparingly; the on-screen arrow is normally
-  enough.
+For a quieter display, leave notifications off. For map-only navigation,
+choose **Hide HUD**, leave **Show world-map pin** on, and turn **Use native
+hint arrow** off if you do not want it.
 
-## Updating task data
+## Troubleshooting
 
-The packaged task data was generated from the BSD-licensed Sailing project
-listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The import helper
-under `tools/` can regenerate it from a compatible upstream task enum and TSV
-data file after a game update.
+| Issue | What to check |
+| --- | --- |
+| No overlay appears | Check the plugin is enabled and **Enable navigator** is on. The default HUD appears only aboard a boat; use **Always show** to inspect a target on land. No overlay appears if there is no eligible task. |
+| The target changes while travelling | The plugin continually selects the closest eligible task. Your position, Sailing level or task completion may make a different task closer. |
+| A completed task is selected | Turn **Include completed tasks** off. Completion updates automatically from the game's task progress. |
+| I cannot perform the suggested activity | Check the task's quest, item and boat requirements in the game. The plugin filters by Sailing level and completion only. |
+| The arrow points across an island | It shows the direct direction, not a route around obstacles. Plan the sailing route on the map. |
+| The native hint arrow disappears | Other content or plugins can use RuneScape's shared hint arrow. Sea Chart Navigator yields to a different arrow and resumes once it is cleared. The HUD and map pin can still provide guidance. |
+| Hiding the HUD leaves a map pin or hint arrow | These are controlled separately. Turn off **Show world-map pin** and/or **Use native hint arrow**, or switch **Enable navigator** off to clear all navigation. |
+| An arrival alert appears before I reach the exact tile | The alert uses **Arrival radius**; **At location** appears only on the target tile. Reduce the radius for a closer alert. |
+| No notification appears | Enable the relevant notification option. For arrival alerts, enter the configured radius; an alert does not repeat continuously while you remain near the same target. |
+
+## Help and credits
+
+Report incorrect locations or other problems through
+[GitHub Issues](https://github.com/Cornwall92/SeaChartNavigator/issues).
+Include the task name, relevant settings and what you expected to see. A
+screenshot of the overlay and map can help explain a navigation issue.
+
+Charting data is derived from the Sailing project. Attribution and licensing
+details are in [Third-party notices](THIRD_PARTY_NOTICES.md). The plugin is
+distributed under the [BSD 2-Clause License](LICENSE).
