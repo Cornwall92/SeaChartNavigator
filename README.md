@@ -9,21 +9,20 @@ are excluded by default.
 
 ## Contents
 
-- [Install and get started](#install-and-get-started)
+- [Getting started](#getting-started)
 - [Follow a charting target](#follow-a-charting-target)
 - [How targets are selected](#how-targets-are-selected)
 - [Settings reference](#settings-reference)
 - [Troubleshooting](#troubleshooting)
 - [Help and credits](#help-and-credits)
 
-## Install and get started
+## Getting started
 
-1. Open RuneLite's **Plugin Hub** and search for **Sea Chart Navigator**.
-2. Install the plugin and enable it in your plugin list.
-3. Open its settings and leave **Enable navigator** switched on.
-4. Board your Sailing boat. The navigation overlay appears when an eligible
+1. Open **Sea Chart Navigator** in RuneLite's plugin settings and leave
+   **Enable navigator** switched on.
+2. Board your Sailing boat. The navigation overlay appears when an eligible
    charting task is available.
-5. Follow the direction shown, check the activity type, and complete the task
+3. Follow the direction shown, check the activity type, and complete the task
    in the game. The navigator selects another eligible task automatically.
 
 The defaults are suitable for finding unfinished tasks at your normal Sailing
